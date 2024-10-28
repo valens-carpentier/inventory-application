@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books</title>
+    <link rel="stylesheet" href="/styles/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>Books</h1>
+    <ul>
+        <% books.forEach(book => { %>
+            <li>
+                <h2><%= book.title %></h2>
+                <p>Author: <%= book.author %></p>
+                <p>Category: <%= book.category_name || 'Uncategorized' %></p>
+                <p>Quantity: <%= book.quantity %></p>
+                <div class="book-actions">
+                    <button onclick="deleteBook('<%= book.book_id %>')" class="delete-btn">Delete</button>
+                </div>
+            </li>
+        <% }); %>
+    </ul>
+    
+    <div class="add-book-form">
+        <h2>Add New Book</h2>
+        <form id="addBookForm" method="POST" action="/books">
+            <div class="form-group">
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="author">Author:</label>
+                <input type="text" id="author" name="author" required>
+            </div>
+            <div class="form-group">
+                <label for="category_id">Category:</label>
+                <select id="category_id" name="category_id" required>
+                    <% categories.forEach(category => { %>
+                        <option value="<%= category.category_id %>"><%= category.category_name %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" required min="0" value="0">
+            </div>
+            <button type="submit" class="submit-button">Add Book</button>
+        </form>
+    </div>
+    
+    <a href="/" class="back-link">Back to Home</a>
+    <script>
+    async function deleteBook(bookId) {
+        console.log('Book object:', bookId); // Debug log
+        
+        if (!bookId) {
+            console.error('No book ID provided');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this book?')) {
+            try {
+                console.log('Sending DELETE request for book ID:', bookId); // Debug log
+                const response = await fetch(`/books/${bookId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.message) {
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Error deleting book');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting book: ' + error.message);
+            }
+        }
+    }
+    </script>
+</body>
+</html>

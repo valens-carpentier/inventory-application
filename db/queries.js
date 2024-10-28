@@ -7,7 +7,12 @@ const executeQuery = async (query, params = []) => {
 
 //Book Queries:
 async function getBooks() {
-    const books = await executeQuery('SELECT * FROM book');
+    const books = await executeQuery(`
+        SELECT b.book_id, b.title, b.author, b.quantity, 
+               b.category_id, c.category_name
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.category_id
+    `);
     return books;
 }
 
@@ -17,7 +22,10 @@ async function getBookById(id) {
 }
 
 async function createBook(book) {
-    const newBook = await executeQuery('INSERT INTO book (title, author, category_id, publisher_id) VALUES ($1, $2, $3, $4) RETURNING *', [book.title, book.author, book.category_id, book.publisher_id]);
+    const newBook = await executeQuery(
+        'INSERT INTO book (title, author, category_id, quantity) VALUES ($1, $2, $3, $4) RETURNING *',
+        [book.title, book.author, book.category_id, book.quantity]
+    );
     return newBook[0];
 }
 
@@ -27,8 +35,8 @@ async function updateBook(id, book) {
 }
 
 async function deleteBook(id) {
-    const deletedBook = await executeQuery('DELETE FROM book WHERE id = $1', [id]);
-    return deletedBook.length;
+    const result = await executeQuery('DELETE FROM book WHERE book_id = $1 RETURNING *', [id]);
+    return result.length;
 }
 
 async function searchBooks(criteria) {  
@@ -44,7 +52,7 @@ async function getCategories() {
 }
 
 async function getCategoryById(id) {
-    const category = await executeQuery('SELECT * FROM category WHERE id = $1', [id]);
+    const category = await executeQuery('SELECT * FROM category WHERE category_id = $1', [id]);
     return category[0];
 }
 
@@ -58,47 +66,45 @@ async function updateCategory(id, category) {
     return updatedCategory[0];
 }
 
-async function deleteCategory(id) {
-    const deletedCategory = await executeQuery('DELETE FROM category WHERE id = $1', [id]);
-    return deletedCategory.length;
+async function deleteCategory(categoryId) {
+    // First check if category has any books
+    const booksInCategory = await executeQuery(
+        'SELECT COUNT(*) as count FROM book WHERE category_id = $1',
+        [categoryId]
+    );
+    
+    console.log('Books count:', booksInCategory[0].count); // Debug log
+    console.log('Attempting to delete category:', categoryId); // Debug log
+    
+    if (booksInCategory[0].count > 0) {
+        throw new Error('Cannot delete category that contains books');
+    }
+    
+    try {
+        // Double check if category exists
+        const categoryExists = await executeQuery(
+            'SELECT * FROM category WHERE category_id = $1',
+            [categoryId]
+        );
+        console.log('Category exists:', categoryExists); // Debug log
+
+        // If no books exist, proceed with deletion
+        const result = await executeQuery(
+            'DELETE FROM category WHERE category_id = $1 RETURNING *',
+            [categoryId]
+        );
+        console.log('Delete result:', result); // Debug log
+        return result;
+    } catch (error) {
+        console.log('Delete error:', error); // Debug log
+        throw error;
+    }
 }   
 
 async function getBooksInCategory(id) {
     const books = await executeQuery('SELECT * FROM book WHERE category_id = $1', [id]);
     return books;
 }
-
-//Publisher Queries:
-async function getPublishers() {
-    const publishers = await executeQuery('SELECT * FROM publisher');
-    return publishers;
-}  
-
-async function getPublisherById(id) {
-    const publisher = await executeQuery('SELECT * FROM publisher WHERE id = $1', [id]);
-    return publisher[0];
-}
-
-async function createPublisher(publisher) {
-    const newPublisher = await executeQuery('INSERT INTO publisher (publisher_name, address, contact_info) VALUES ($1, $2, $3) RETURNING *', [publisher.publisher_name, publisher.address, publisher.contact_info]);
-    return newPublisher[0];
-}
-
-async function updatePublisher(id, publisher) {
-    const updatedPublisher = await executeQuery('UPDATE publisher SET publisher_name = $1, address = $2, contact_info = $3 WHERE id = $4 RETURNING *', [publisher.publisher_name, publisher.address, publisher.contact_info, id]);
-    return updatedPublisher[0];
-}
-
-async function deletePublisher(id) {
-    const deletedPublisher = await executeQuery('DELETE FROM publisher WHERE id = $1', [id]);
-    return deletedPublisher.length;
-}
-
-async function getBooksByPublisher(id) {
-    const books = await executeQuery('SELECT * FROM book WHERE publisher_id = $1', [id]);
-    return books;
-}
-
 
 module.exports = {
   getBooks,
@@ -113,10 +119,4 @@ module.exports = {
   updateCategory,
   deleteCategory,
   getBooksInCategory,
-  getPublishers,
-  getPublisherById,
-  createPublisher,
-  updatePublisher,
-  deletePublisher,
-  getBooksByPublisher
 };

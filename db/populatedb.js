@@ -16,14 +16,6 @@ const SQL = `
     ('The Hobbit', 'J.R.R. Tolkien', 5, 2),
     ('Sapiens: A Brief History of Humankind', 'Yuval Noah Harari', 4, 4),
     ('1984', 'George Orwell', 1, 6);
-
-  -- Insert dummy data into Publisher
-  INSERT INTO Publisher (publisher_name, address, contact_info) VALUES
-    ('Penguin Random House', 'New York, NY', 'contact@penguinrandomhouse.com'),
-    ('HarperCollins', 'New York, NY', 'info@harpercollins.com'),
-    ('Hachette Book Group', 'New York, NY', 'support@hbgusa.com'),
-    ('Macmillan Publishers', 'London, UK', 'service@macmillan.com'),
-    ('Simon & Schuster', 'New York, NY', 'contact@simonandschuster.com');
 `;
 
 async function main() {

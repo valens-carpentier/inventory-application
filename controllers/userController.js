@@ -5,8 +5,11 @@ const pool = require("../db/pool");
 const BookController = {
   getAllBooks: async (req, res) => {
     try {
-      const books = await db.getBooks();
-      res.json(books);
+      const [books, categories] = await Promise.all([
+        db.getBooks(),
+        db.getCategories()
+      ]);
+      res.render('books', { books, categories });
     } catch (error) {
       console.error('Error getting all books:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -29,13 +32,17 @@ const BookController = {
   },
 
   createBook: async (req, res) => {
-    const { title, author, category_id, publisher_id } = req.body;
     try {
-      const newBook = await db.createBook({ title, author, category_id, publisher_id });
-      res.status(201).json(newBook);
+        const newBook = await db.createBook({ 
+            title: req.body.title, 
+            author: req.body.author, 
+            category_id: Number(req.body.category_id), 
+            quantity: Number(req.body.quantity) || 0  // Default to 0 if not provided
+        });
+        res.redirect('/books');
     } catch (error) {
-      console.error('Error creating book:', error);
-      res.status(500).json({ error: 'Internal server error' });
+        console.error('Error creating book:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
   },
 
@@ -87,7 +94,7 @@ const CategoryController = {
   getAllCategories: async (req, res) => {
     try {
       const categories = await db.getCategories();
-      res.json(categories);
+      res.render('categories', { categories });
     } catch (error) {
       console.error('Error getting all categories:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -140,22 +147,32 @@ const CategoryController = {
     const { id } = req.params;
     try {
       const result = await db.deleteCategory(id);
-      if (result > 0) {
-        res.json({ message: 'Category deleted successfully' });
+      if (result && result.length > 0) {
+        req.flash('success', 'Category deleted successfully');
+        res.redirect('/categories');
       } else {
-        res.status(404).json({ error: 'Category not found' });
+        req.flash('error', 'Category not found');
+        res.redirect('/categories');
       }
     } catch (error) {
-      console.error('Error deleting category:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      if (error.message === 'Cannot delete category that contains books') {
+        res.status(400).json({ error: error.message });
+      } else {
+        console.error('Error deleting category:', error);
+        req.flash('error', 'An error occurred while deleting the category');
+        res.redirect('/categories');
+      }
     }
   },
 
   getBooksInCategory: async (req, res) => {
     const { id } = req.params;
     try {
-      const books = await db.getBooksInCategory(id);
-      res.json(books);
+      const [books, category] = await Promise.all([
+        db.getBooksInCategory(id),
+        db.getCategoryById(id)
+      ]);
+      res.render('category-books', { books, category });
     } catch (error) {
       console.error('Error getting books in category:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -163,107 +180,6 @@ const CategoryController = {
   }
 };
 
-// PublisherController:
-const PublisherController = {
-  getAllPublishers: async (req, res) => {
-    try {
-      const publishers = await db.getPublishers();
-      res.json(publishers);
-    } catch (error) {
-      console.error('Error getting all publishers:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
 
-  getPublisherById: async (req, res) => {
-    const { id } = req.params;
-    try {
-      const publisher = await db.getPublisherById(id);
-      if (publisher) {
-        res.json(publisher);
-      } else {
-        res.status(404).json({ error: 'Publisher not found' });
-      }
-    } catch (error) {
-      console.error('Error getting publisher by id:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
 
-  createPublisher: async (req, res) => {
-    const { publisher_name, address, contact_info } = req.body;
-    try {
-      const newPublisher = await db.createPublisher({ publisher_name, address, contact_info });
-      res.status(201).json(newPublisher);
-    } catch (error) {
-      console.error('Error creating publisher:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-
-  updatePublisher: async (req, res) => {
-    const { id } = req.params;
-    const { publisher_name, address, contact_info } = req.body;
-    try {
-      const updatedPublisher = await db.updatePublisher(id, { publisher_name, address, contact_info });
-      if (updatedPublisher) {
-        res.json(updatedPublisher);
-      } else {
-        res.status(404).json({ error: 'Publisher not found' });
-      }
-    } catch (error) {
-      console.error('Error updating publisher:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-
-  deletePublisher: async (req, res) => {
-    const { id } = req.params;
-    try {
-      const result = await db.deletePublisher(id);
-      if (result > 0) {
-        res.json({ message: 'Publisher deleted successfully' });
-      } else {
-        res.status(404).json({ error: 'Publisher not found' });
-      }
-    } catch (error) {
-      console.error('Error deleting publisher:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-
-  getBooksByPublisher: async (req, res) => {
-    const { id } = req.params;
-    try {
-      const books = await db.getBooksByPublisher(id);
-      res.json(books);
-    } catch (error) {
-      console.error('Error getting books by publisher:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-};
-
-const handleError = (res, error, operation) => {
-  console.error(`Error ${operation}:`, error);
-  res.status(500).json({ error: 'Internal server error' });
-};
-
-const handleNotFound = (res, item) => {
-  res.status(404).json({ error: `${item} not found` });
-};
-
-const createControllerMethod = (operation, dbMethod) => async (req, res) => {
-  try {
-    const result = await dbMethod(req.params.id, req.body);
-    if (result) {
-      res.json(result);
-    } else {
-      handleNotFound(res, operation.split(' ')[1]);
-    }
-  } catch (error) {
-    handleError(res, error, operation);
-  }
-};
-
-module.exports = { BookController, CategoryController, PublisherController };
+module.exports = { BookController, CategoryController };
