@@ -1,3 +1,20 @@
-# inventory-application
+# Book Inventory Application
 
-Your Inventory app should have categories and items, so when the user goes to the home-page they can choose a category to view, and then get a list of every item in that category. You should include all of the CRUD methods for both items and categories, so anybody that’s visiting the site can Create, Read, Update or Delete any Item or Category.
+A web-based inventory management system for books built with Node.js, Express, PostgreSQL, and EJS templating.
+
+## Features
+
+- View and manage book inventory
+- Categorize books by genre/type
+- Add new books with title, author, and quantity
+- Delete existing books
+- View and manage book categories
+- Track book quantities
+
+## Tech Stack
+
+- **Backend**: Node.js, Express
+- **Database**: PostgreSQL
+- **View Engine**: EJS
+- **Styling**: Custom CSS
+
